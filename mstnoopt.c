@@ -80,12 +80,12 @@ int main()
     unsigned ii, jj;
     generateGraph();
     //printGraph();
-    
+
     //#pragma omp parallel
     {
       unsigned lmin = MAX;
       unsigned lx = 0, ly = 0;
-      
+
       //#pragma omp for nowait
       for (ii = 0; ii < SIZE; ++ii)
       {
@@ -99,7 +99,7 @@ int main()
 		      }
 	      }
       }
-      
+
       //#pragma omp critical
       {
 	if(lmin < minimum)
@@ -115,14 +115,14 @@ int main()
     got[y] = TRUE;
     minimum = MAX;
     //printf("%u %u\n", x + 1, y + 1);
-    
+
     while (!gotAll())
     {
   //#pragma omp parallel
 	{
 	unsigned lmin = MAX;
 	unsigned lx = 0, ly = 0;
-	
+
 	//#pragma omp for nowait
 	for (ii = 0; ii < SIZE; ++ii)
 	{
@@ -131,12 +131,12 @@ int main()
 		    if ((got[ii] ^ got[jj]) && (data[ii][jj] < lmin))
 		    {
 			    lmin = data[ii][jj];
-			    lx = ii; 
+			    lx = ii;
 			    ly = jj;
 		    }
 		}
 	}
-	      
+
 	//#pragma omp critical
 	{
 	  if(lmin < minimum)
@@ -146,6 +146,7 @@ int main()
 	    y = ly;
 	  }
 	}
+  printf("min:%u", minimum);
       }
       mst += data[x][y];
       got[x] = TRUE;
@@ -155,5 +156,3 @@ int main()
     }
     printf("%llu", mst);
 }
-
-
