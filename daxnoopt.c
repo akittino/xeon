@@ -125,7 +125,7 @@ void countDijkstr(int src, int dst)
   ((tvalAfter.tv_sec - tvalBefore.tv_sec) * 1000000L
   + tvalAfter.tv_usec) - tvalBefore.tv_usec
 );
-printf("Shortest Path: %d", shortestPath[dst]);
+printf("Shortest Path: %d\n", shortestPath[dst]);
 
 }
 

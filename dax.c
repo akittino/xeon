@@ -5,7 +5,7 @@
 
 #define size 10000
 #define INT_MAX (unsigned int)-1
-#define NUMBER_OF_THREADS 200
+#define NUMBER_OF_THREADS 32
 
 int allNodes[size][size];
 
@@ -71,7 +71,7 @@ void countDijkstra(int src, int dst)
   unsigned int min = 0, indexOfMin = 0, tid = 0;
   int i, j, k, m;
 
-
+  omp_set_num_threads(NUMBER_OF_THREADS);
   gettimeofday(&tvalBefore, NULL);
 //  #pragma omp parallel for private(i) shared(shortestPath, visited)
   for (i = 0; i < size; i++)
@@ -80,7 +80,6 @@ void countDijkstra(int src, int dst)
     visited[i] = 0;
   }
   shortestPath[src] = 0;
-  printf("-1\n");
   for (m = 0; m < size; m++)
   {
     min = INT_MAX;
@@ -88,7 +87,6 @@ void countDijkstra(int src, int dst)
     {
       localMins[i] = INT_MAX;
     }
-    printf("0\n");
     #pragma omp parallel shared(visited, shortestPath, localIndexOfMins, localMins) private(k, tid)
     {
       tid = omp_get_thread_num();
@@ -102,7 +100,6 @@ void countDijkstra(int src, int dst)
         }
       }
     }
-    printf("1\n");
     for(i = 0; i < NUMBER_OF_THREADS; i++)
     {
       if(localMins[i] < min)
@@ -111,7 +108,6 @@ void countDijkstra(int src, int dst)
         indexOfMin = localIndexOfMins[i];
       }
     }
-    printf("2\n");
     visited[indexOfMin] = 1;
 
     #pragma omp parallel for private(j) shared(allNodes, shortestPath, visited)
@@ -122,14 +118,13 @@ void countDijkstra(int src, int dst)
         shortestPath[j] = allNodes[indexOfMin][j] + shortestPath[indexOfMin];
       }
     }
-    printf("m=%d\n", m);
   }
 
   gettimeofday(&tvalAfter, NULL);
   printf("Time in microseconds: %ld microseconds\n",
   ((tvalAfter.tv_sec - tvalBefore.tv_sec) * 1000000L
   + tvalAfter.tv_usec) - tvalBefore.tv_usec );
-//printf("Shortest Path: %d", shortestPath[10]);
+  printf("Shortest Path: %d\n", shortestPath[dst]);
 
 }
 
