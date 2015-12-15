@@ -1,10 +1,12 @@
-// scp mst.c student01@apl12.eti.pg.gda.pl:~/kantee
-// source /opt/intel/composer_xe_2013_sp1.3.174/bin/compilervars.sh intel64
-// icc -openmp -mmic -O3 mst.c -o mst
-// scp mst mic0:~
-// scp /opt/intel/composer_xe_2013_sp1.3.174/compiler/lib/mic/libiomp5.so mic0:~
-// export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:.
-// time ./mst
+/*
+scp mst.c student01@apl12.eti.pg.gda.pl:~/kantee
+source /opt/intel/composer_xe_2013_sp1.3.174/bin/compilervars.sh intel64
+icc -openmp -mmic -O3 mst.c -o mst
+scp mst mic0:~
+scp /opt/intel/composer_xe_2013_sp1.3.174/compiler/lib/mic/libiomp5.so mic0:~
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:.
+time ./mst
+*/
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,6 +18,7 @@ typedef short unsigned int dint;
 #define SIZE 1000
 #define MAX (dint)-1
 #define TRUE 1
+#define THREADS 240 /* should be divisible by 8 */
 
 dint data[SIZE][SIZE];
 short got[SIZE];
@@ -23,20 +26,20 @@ short got[SIZE];
 void generateGraph()
 {
   unsigned ii, jj;
-  //#pragma omp parallel for // - not used to have always the same data
-  // unused
   for (ii = 0; ii < SIZE; ++ii)
   {
     for (jj = 0; jj < SIZE; ++jj)
     {
       if (ii == jj)
       {
-        data[ii][jj] = data[jj][ii] = MAX;
+        data[ii][jj] = MAX;
+        data[jj][ii] = MAX;
       }
       else
       {
         dint tmp = (dint)rand() % MAX;
-        data[ii][jj] = data[jj][ii] = tmp;
+        data[ii][jj] = tmp;
+        data[jj][ii] = tmp;
       }
     }
   }
@@ -62,7 +65,7 @@ unsigned gotAll()
 {
   unsigned total = 0;
   unsigned ii;
-  #pragma omp parallel for reduction(+:total)
+  #pragma omp parallel for reduction(+:total) shared(got) private(ii)
   for (ii = 0; ii < SIZE; ++ii)
   {
     if (got[ii] == TRUE)
@@ -80,36 +83,55 @@ int main()
   unsigned ii, jj;
   generateGraph();
   //printGraph();
+  omp_set_num_threads(THREADS);
+  unsigned lmin[THREADS] = {0};
+  unsigned lx[THREADS] = {0};
+  unsigned ly[THREADS] = {0};
 
-  #pragma omp parallel
+  #pragma simd
+  for(ii = 0; ii < THREADS; ii += 8)
   {
-    unsigned lmin = MAX;
-    unsigned lx = 0, ly = 0;
+    lmin[ii    ] = MAX;
+    lmin[ii + 1] = MAX;
+    lmin[ii + 2] = MAX;
+    lmin[ii + 3] = MAX;
+    lmin[ii + 4] = MAX;
+    lmin[ii + 5] = MAX;
+    lmin[ii + 6] = MAX;
+    lmin[ii + 7] = MAX;
+  }
 
+  #pragma omp parallel shared(data, lmin, lx, ly) private(ii, jj)
+  {
+    unsigned tid = omp_get_thread_num();
+
+    #pragma ivdep
     #pragma omp for nowait
     for (ii = 0; ii < SIZE; ++ii)
     {
       for (jj = 0; jj < SIZE; ++jj)
       {
-        if (data[ii][jj] < lmin)
+        if (data[ii][jj] < lmin[tid])
         {
-          lmin = data[ii][jj];
-          lx = ii;
-          ly = jj;
+          lmin[tid] = data[ii][jj];
+          lx[tid] = ii;
+          ly[tid] = jj;
         }
-      }
-    }
+      } // for jj
+    } // for ii
+  } // pragma omp parallel
 
-    #pragma omp critical
+  // find global minimum from local minimums
+  for(ii = 0; ii < THREADS; ++ii)
+  {
+    if(lmin[ii] < minimum)
     {
-      if(lmin < minimum)
-      {
-        minimum = lmin;
-        x = lx;
-        y = ly;
-      }
+      minimum = lmin[ii];
+      x = lx[ii];
+      y = ly[ii];
     }
   }
+
   mst += data[x][y];
   got[x] = TRUE;
   got[y] = TRUE;
@@ -118,35 +140,49 @@ int main()
 
   while (!gotAll())
   {
-    #pragma omp parallel
+    #pragma simd
+    for(ii = 0; ii < THREADS; ii += 8)
     {
-      unsigned lmin = MAX;
-      unsigned lx = 0, ly = 0;
+      lmin[ii    ] = MAX;
+      lmin[ii + 1] = MAX;
+      lmin[ii + 2] = MAX;
+      lmin[ii + 3] = MAX;
+      lmin[ii + 4] = MAX;
+      lmin[ii + 5] = MAX;
+      lmin[ii + 6] = MAX;
+      lmin[ii + 7] = MAX;
+    }
+    #pragma omp parallel shared(data, got, lmin, lx, ly) private(ii, jj)
+    {
+      unsigned tid = omp_get_thread_num();
 
+      #pragma ivdep
       #pragma omp for nowait
       for (ii = 0; ii < SIZE; ++ii)
       {
         for (jj = 0; jj < SIZE; ++jj)
         {
-          if ((got[ii] ^ got[jj]) && (data[ii][jj] < lmin))
+          if ((got[ii] ^ got[jj]) && (data[ii][jj] < lmin[tid]))
           {
-            lmin = data[ii][jj];
-            lx = ii;
-            ly = jj;
+            lmin[tid] = data[ii][jj];
+            lx[tid] = ii;
+            ly[tid] = jj;
           }
-        }
-      }
+        } // for jj
+      } // for ii
+    } // pragma omp parallel
 
-      #pragma omp critical
+    // find global minimum from local minimums
+    for(ii = 0; ii < THREADS; ++ii)
+    {
+      if(lmin[ii] < minimum)
       {
-        if(lmin < minimum)
-        {
-          minimum = lmin;
-          x = lx;
-          y = ly;
-        }
+        minimum = lmin[ii];
+        x = lx[ii];
+        y = ly[ii];
       }
     }
+
     mst += data[x][y];
     got[x] = TRUE;
     got[y] = TRUE;
