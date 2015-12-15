@@ -18,7 +18,7 @@ typedef short unsigned int dint;
 #define SIZE 1000
 #define MAX (dint)-1
 #define TRUE 1
-#define THREADS 240
+#define THREADS 240 /* should be divisible by 8 */
 
 dint data[SIZE][SIZE];
 short got[SIZE];
@@ -32,12 +32,14 @@ void generateGraph()
     {
       if (ii == jj)
       {
-        data[ii][jj] = data[jj][ii] = MAX;
+        data[ii][jj] = MAX;
+        data[jj][ii] = MAX;
       }
       else
       {
         dint tmp = (dint)rand() % MAX;
-        data[ii][jj] = data[jj][ii] = tmp;
+        data[ii][jj] = tmp;
+        data[jj][ii] = tmp;
       }
     }
   }
@@ -86,15 +88,24 @@ int main()
   unsigned lx[THREADS] = {0};
   unsigned ly[THREADS] = {0};
 
-  for(ii = 0; ii < THREADS; ++ii)
+  #pragma simd
+  for(ii = 0; ii < THREADS; ii += 8)
   {
-    lmin[ii] = MAX;
+    lmin[ii    ] = MAX;
+    lmin[ii + 1] = MAX;
+    lmin[ii + 2] = MAX;
+    lmin[ii + 3] = MAX;
+    lmin[ii + 4] = MAX;
+    lmin[ii + 5] = MAX;
+    lmin[ii + 6] = MAX;
+    lmin[ii + 7] = MAX;
   }
 
   #pragma omp parallel shared(data, lmin, lx, ly) private(ii, jj)
   {
     unsigned tid = omp_get_thread_num();
 
+    #pragma ivdep
     #pragma omp for nowait
     for (ii = 0; ii < SIZE; ++ii)
     {
@@ -129,15 +140,23 @@ int main()
 
   while (!gotAll())
   {
-    for(ii = 0; ii < THREADS; ++ii)
+    #pragma simd
+    for(ii = 0; ii < THREADS; ii += 8)
     {
-      lmin[ii] = MAX;
+      lmin[ii    ] = MAX;
+      lmin[ii + 1] = MAX;
+      lmin[ii + 2] = MAX;
+      lmin[ii + 3] = MAX;
+      lmin[ii + 4] = MAX;
+      lmin[ii + 5] = MAX;
+      lmin[ii + 6] = MAX;
+      lmin[ii + 7] = MAX;
     }
-
     #pragma omp parallel shared(data, got, lmin, lx, ly) private(ii, jj)
     {
       unsigned tid = omp_get_thread_num();
 
+      #pragma ivdep
       #pragma omp for nowait
       for (ii = 0; ii < SIZE; ++ii)
       {
