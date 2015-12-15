@@ -85,13 +85,13 @@ int main()
   unsigned ii = 0, jj = 0;
   unsigned tnum = 0;
   unsigned tid = 0;
-  dint* lmin = NULL;
-  unsigned* lx = NULL;
-  unsigned* ly = NULL;
+  dint* lmin = null;
+  unsigned* lx = null;
+  unsigned* ly = null;
   generateGraph();
   //printGraph();
   tnum = omp_get_num_threads();
-  lmin = (dint*) malloc (tnum * sizeof(dint));
+  lmin = (unsigned*) malloc (tnum * sizeof(dint));
   lx = (unsigned*) malloc (tnum * sizeof(unsigned));
   ly = (unsigned*) malloc (tnum * sizeof(unsigned));
 
