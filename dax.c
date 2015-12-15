@@ -13,7 +13,6 @@ void generateGraph()
 {
   struct timeval tvalBefore;
   struct timeval tvalAfter;
-
   //time_t t;
   int i, j, k, randomData, column, row;
   //srand((unsigned)time(&t));
@@ -22,19 +21,15 @@ void generateGraph()
 
   for (i = 0; i < size; i++)
   {
-
     for (j = i; j < size; j++)
     {
       if (i == j)
       {
-
         allNodes[i][j] = 0;
       }
       else
       {
-
         randomData = rand();
-
         allNodes[i][j] = randomData;
         allNodes[j][i] = randomData;
       }
@@ -49,21 +44,16 @@ void generateGraph()
     row = rand() % size;
     allNodes[column][row] = 0;
     allNodes[row][column] = 0;
-
     //printf("column : %d, row: %d\n", column, row);
   }
 
   gettimeofday(&tvalAfter, NULL);
   printf("Time in microseconds: %ld microseconds\n",
-  ((tvalAfter.tv_sec - tvalBefore.tv_sec) * 1000000L
-  + tvalAfter.tv_usec) - tvalBefore.tv_usec
-);
-
+  ((tvalAfter.tv_sec - tvalBefore.tv_sec) * 1000000L + tvalAfter.tv_usec) - tvalBefore.tv_usec);
 }
 
 void countDijkstra(int src, int dst)
 {
-
   struct timeval tvalBefore;
   struct timeval tvalAfter;
   unsigned int shortestPath[size], localMins[NUMBER_OF_THREADS], localIndexOfMins[NUMBER_OF_THREADS];
@@ -73,17 +63,25 @@ void countDijkstra(int src, int dst)
 
   omp_set_num_threads(NUMBER_OF_THREADS);
   gettimeofday(&tvalBefore, NULL);
-//  #pragma omp parallel for private(i) shared(shortestPath, visited)
-  for (i = 0; i < size; i++)
+  //  #pragma omp parallel for private(i) shared(shortestPath, visited)
+  //  #pragma simd
+  for (i = 0; i < size; i += 8)
   {
     shortestPath[i] = INT_MAX;
+    shortestPath[i + 1] = INT_MAX;
+    shortestPath[i + 2] = INT_MAX;
+    shortestPath[i + 3] = INT_MAX;
     visited[i] = 0;
+    visited[i + 1] = 0;
+    visited[i + 2] = 0;
+    visited[i + 3] = 0;
   }
   shortestPath[src] = 0;
+  
   for (m = 0; m < size; m++)
   {
     min = INT_MAX;
-    for(i = 0; i < NUMBER_OF_THREADS; i++)
+    for (i = 0; i < NUMBER_OF_THREADS; i++)
     {
       localMins[i] = INT_MAX;
     }
@@ -100,9 +98,10 @@ void countDijkstra(int src, int dst)
         }
       }
     }
-    for(i = 0; i < NUMBER_OF_THREADS; i++)
+
+    for (i = 0; i < NUMBER_OF_THREADS; i++)
     {
-      if(localMins[i] < min)
+      if (localMins[i] < min)
       {
         min = localMins[i];
         indexOfMin = localIndexOfMins[i];
@@ -122,10 +121,8 @@ void countDijkstra(int src, int dst)
 
   gettimeofday(&tvalAfter, NULL);
   printf("Time in microseconds: %ld microseconds\n",
-  ((tvalAfter.tv_sec - tvalBefore.tv_sec) * 1000000L
-  + tvalAfter.tv_usec) - tvalBefore.tv_usec );
+  ((tvalAfter.tv_sec - tvalBefore.tv_sec) * 1000000L + tvalAfter.tv_usec) - tvalBefore.tv_usec);
   printf("Shortest Path: %d\n", shortestPath[dst]);
-
 }
 
 void printGraph()
@@ -143,12 +140,10 @@ void printGraph()
 
 int main()
 {
-
   printf("GRAPH SIZE: %d\n", size);
   generateGraph();
   printf("Graph generated\n");
   //printGraph();
-
   countDijkstra(0, size - 1);
 
   return 0;
