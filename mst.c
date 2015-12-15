@@ -1,12 +1,10 @@
-/*
-scp mst.c student01@apl12.eti.pg.gda.pl:~/kantee
-source /opt/intel/composer_xe_2013_sp1.3.174/bin/compilervars.sh intel64
-icc -openmp -mmic -O3 mst.c -o mst
-scp mst mic0:~
-scp /opt/intel/composer_xe_2013_sp1.3.174/compiler/lib/mic/libiomp5.so mic0:~
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:.
-time ./mst
-*/
+// scp mst.c student01@apl12.eti.pg.gda.pl:~/kantee
+// source /opt/intel/composer_xe_2013_sp1.3.174/bin/compilervars.sh intel64
+// icc -openmp -mmic -O3 mst.c -o mst
+// scp mst mic0:~
+// scp /opt/intel/composer_xe_2013_sp1.3.174/compiler/lib/mic/libiomp5.so mic0:~
+// export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:.
+// time ./mst
 
 #include <stdio.h>
 #include <stdlib.h>
