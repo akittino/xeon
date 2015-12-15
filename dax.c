@@ -96,6 +96,7 @@ void countDijkstra(int src, int dst)
     #pragma omp parallel shared(visited, shortestPath, localIndexOfMins, localMins) private(k, tid)
     {
       tid = omp_get_thread_num();
+      #pragma ivdep
       #pragma omp for nowait
       for (k = 0; k < SIZE; k++)
       {
