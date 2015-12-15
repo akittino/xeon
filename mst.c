@@ -22,7 +22,9 @@ short got[SIZE];
 
 void generateGraph()
 {
-  unsigned ii = 0, jj = 0;
+  unsigned ii, jj;
+  //#pragma omp parallel for // - not used to have always the same data
+  // unused
   for (ii = 0; ii < SIZE; ++ii)
   {
     for (jj = 0; jj < SIZE; ++jj)
@@ -42,19 +44,15 @@ void generateGraph()
 
 void printGraph()
 {
-  unsigned ii = 0, jj = 0;
+  unsigned ii, jj;
   for (ii = 0; ii < SIZE; ++ii)
   {
     for (jj = 0; jj < SIZE; ++jj)
     {
       if(data[ii][jj] == MAX)
-      {
-        printf("%u ", 0);
-      }
+      printf("%u ", 0);
       else
-      {
-        printf("%u ", data[ii][jj]);
-      }
+      printf("%u ", data[ii][jj]);
     }
     printf("\n");
   }
@@ -63,14 +61,12 @@ void printGraph()
 unsigned gotAll()
 {
   unsigned total = 0;
-  unsigned ii = 0;
+  unsigned ii;
   #pragma omp parallel for reduction(+:total) shared(got) private(ii)
   for (ii = 0; ii < SIZE; ++ii)
   {
     if (got[ii] == TRUE)
-    {
-      total += 1;
-    }
+    total += 1;
   }
   //printf("%u\n", total);
   return total == SIZE;
@@ -81,39 +77,75 @@ int main()
   dint minimum = MAX;
   unsigned x = 0, y = 0;
   long long unsigned int mst = 0;
-  unsigned first = 1;
-  unsigned ii = 0, jj = 0;
+  unsigned ii, jj;
   unsigned tnum = 0;
   unsigned tid = 0;
-  dint* lmin = null;
+  unsigned* lmin = null;
   unsigned* lx = null;
   unsigned* ly = null;
   generateGraph();
   //printGraph();
   tnum = omp_get_num_threads();
-  lmin = (unsigned*) malloc (tnum * sizeof(dint));
+  lmin = (unsigned*) malloc (tnum * sizeof(unsigned));
   lx = (unsigned*) malloc (tnum * sizeof(unsigned));
   ly = (unsigned*) malloc (tnum * sizeof(unsigned));
+
+
+  #pragma omp parallel shared(data, lx, ly, lmin) private(ii, jj, tid)
+  {
+    lx = ly = 0;
+    tid = omp_get_thread_num();
+
+    for (ii = 0; ii < tnum; ++ii)
+      lmin[ii] = MAX;
+
+    #pragma omp for nowait
+    for (ii = 0; ii < SIZE; ++ii)
+    {
+      for (jj = 0; jj < SIZE; ++jj)
+      {
+        if (data[ii][jj] < lmin[tid])
+        {
+          lmin[tid] = data[ii][jj];
+          lx[tid] = ii;
+          ly[tid] = jj;
+        }
+      } // for
+    } // omp pragma for
+  } // omp pragma parallel
+
+  for(ii = 0; ii < tnum; ++ii)
+  {
+    if(lmin[ii] < minimum)
+    {
+      minimum = lmin[ii];
+      x = lx[ii];
+      y = ly[ii];
+    }
+  }
+
+  mst += data[x][y];
+  got[x] = TRUE;
+  got[y] = TRUE;
+  minimum = MAX;
+  //printf("%u %u\n", x + 1, y + 1);
 
   while (!gotAll())
   {
     #pragma omp parallel shared(data, got, lx, ly, lmin) private(ii, jj)
     {
-
+      lx = 0, ly = 0;
       tid = omp_get_thread_num();
 
       for (ii = 0; ii < tnum; ++ii)
-      {
         lmin[ii] = MAX;
-        lx[ii] = ly[ii] = 0;
-      }
 
       #pragma omp for nowait
       for (ii = 0; ii < SIZE; ++ii)
       {
         for (jj = 0; jj < SIZE; ++jj)
         {
-          if ((first || (got[ii] ^ got[jj])) && (data[ii][jj] < lmin[tid]))
+          if ((got[ii] ^ got[jj]) && (data[ii][jj] < lmin[tid]))
           {
             lmin[tid] = data[ii][jj];
             lx[tid] = ii;
@@ -122,11 +154,6 @@ int main()
         } // for
       } // pragma omp for
     } // pragma omp parallel
-
-    if (first == 1)
-    {
-      first = 0; // first run was done
-    }
 
     for(ii = 0; ii < tnum; ++ii)
     {
