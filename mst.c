@@ -18,7 +18,6 @@ typedef short unsigned int dint;
 #define SIZE 1000
 #define MAX (dint)-1
 #define TRUE 1
-#define THREADS 240
 
 dint data[SIZE][SIZE];
 short got[SIZE];
@@ -75,7 +74,7 @@ unsigned gotAll()
       total += 1;
     }
   }
-  printf("%u\n", total);
+  //printf("%u\n", total);
   return total == SIZE;
 }
 
@@ -86,15 +85,17 @@ int main()
   long long unsigned int mst = 0;
   unsigned first = 1;
   unsigned ii = 0, jj = 0;
-  unsigned tnum = THREADS;
+  unsigned tnum = 0;
   unsigned tid = 0;
-  dint lmin[THREADS] = {0};
-  unsigned lx[THREADS] = {0};
-  unsigned ly[THREADS] = {0};
-  omp_set_num_threads(THREADS);
+  dint* lmin = NULL;
+  unsigned* lx = NULL;
+  unsigned* ly = NULL;
   generateGraph();
   //printGraph();
-  printf("threads:%u\n", tnum);
+  tnum = omp_get_num_threads();
+  lmin = (dint*) malloc (tnum * sizeof(dint));
+  lx = (unsigned*) malloc (tnum * sizeof(unsigned));
+  ly = (unsigned*) malloc (tnum * sizeof(unsigned));
 
   while (!gotAll())
   {
@@ -138,7 +139,6 @@ int main()
         y = ly[ii];
       }
     }
-    printf("min:%u\n", minimum);
 
     mst += data[x][y];
     got[x] = TRUE;
@@ -146,5 +146,5 @@ int main()
     minimum = MAX;
     //printf("%u %u\n", x + 1, y + 1);
   }
-  printf("%llu\n", mst);
+  printf("%llu", mst);
 }
