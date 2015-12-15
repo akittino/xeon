@@ -3,11 +3,11 @@
 #include <sys/time.h>
 #include <omp.h>
 
-#define size 10000
+#define SIZE 10000
 #define INT_MAX (unsigned int)-1
 #define NUMBER_OF_THREADS 32
 
-int allNodes[size][size];
+int allNodes[SIZE][SIZE];
 
 void generateGraph()
 {
@@ -19,9 +19,9 @@ void generateGraph()
 
   gettimeofday(&tvalBefore, NULL);
 
-  for (i = 0; i < size; i++)
+  for (i = 0; i < SIZE; i++)
   {
-    for (j = i; j < size; j++)
+    for (j = i; j < SIZE; j++)
     {
       if (i == j)
       {
@@ -38,10 +38,10 @@ void generateGraph()
   column = 0;
   row = 0;
 
-  for (k = 0; k < size; k++)
+  for (k = 0; k < SIZE; k++)
   {
-    column = rand() % size;
-    row = rand() % size;
+    column = rand() % SIZE;
+    row = rand() % SIZE;
     allNodes[column][row] = 0;
     allNodes[row][column] = 0;
     //printf("column : %d, row: %d\n", column, row);
@@ -56,16 +56,16 @@ void countDijkstra(int src, int dst)
 {
   struct timeval tvalBefore;
   struct timeval tvalAfter;
-  unsigned int shortestPath[size], localMins[NUMBER_OF_THREADS], localIndexOfMins[NUMBER_OF_THREADS];
-  char visited[size];
+  unsigned int shortestPath[SIZE], localMins[NUMBER_OF_THREADS], localIndexOfMins[NUMBER_OF_THREADS];
+  char visited[SIZE];
   unsigned int min = 0, indexOfMin = 0, tid = 0;
   int i, j, k, m;
 
   omp_set_num_threads(NUMBER_OF_THREADS);
   gettimeofday(&tvalBefore, NULL);
   //  #pragma omp parallel for private(i) shared(shortestPath, visited)
-  //  #pragma simd
-  for (i = 0; i < size; i += 8)
+  #pragma simd
+  for (i = 0; i < SIZE; i += 4)
   {
     shortestPath[i] = INT_MAX;
     shortestPath[i + 1] = INT_MAX;
@@ -77,19 +77,27 @@ void countDijkstra(int src, int dst)
     visited[i + 3] = 0;
   }
   shortestPath[src] = 0;
-  
-  for (m = 0; m < size; m++)
+
+  for (m = 0; m < SIZE; m++)
   {
     min = INT_MAX;
-    for (i = 0; i < NUMBER_OF_THREADS; i++)
+    #pragma simd
+    for (i = 0; i < NUMBER_OF_THREADS; i+=8)
     {
       localMins[i] = INT_MAX;
+      localMins[i+1] = INT_MAX;
+      localMins[i+2] = INT_MAX;
+      localMins[i+3] = INT_MAX;
+      localMins[i+4] = INT_MAX;
+      localMins[i+5] = INT_MAX;
+      localMins[i+6] = INT_MAX;
+      localMins[i+7] = INT_MAX;
     }
     #pragma omp parallel shared(visited, shortestPath, localIndexOfMins, localMins) private(k, tid)
     {
       tid = omp_get_thread_num();
       #pragma omp for nowait
-      for (k = 0; k < size; k++)
+      for (k = 0; k < SIZE; k++)
       {
         if (visited[k] == 0 && shortestPath[k] <= localMins[tid])
         {
@@ -110,7 +118,7 @@ void countDijkstra(int src, int dst)
     visited[indexOfMin] = 1;
 
     #pragma omp parallel for private(j) shared(allNodes, shortestPath, visited)
-    for (j = 0; j < size; j++)
+    for (j = 0; j < SIZE; j++)
     {
       if (visited[j] == 0 && allNodes[indexOfMin][j] != 0 && (shortestPath[indexOfMin] + allNodes[indexOfMin][j]) <= shortestPath[j])
       {
@@ -128,9 +136,9 @@ void countDijkstra(int src, int dst)
 void printGraph()
 {
   int i, j;
-  for (i = 0; i < size; i++)
+  for (i = 0; i < SIZE; i++)
   {
-    for (j = 0; j < size; j++)
+    for (j = 0; j < SIZE; j++)
     {
       printf("%d ", allNodes[i][j]);
     }
@@ -140,11 +148,11 @@ void printGraph()
 
 int main()
 {
-  printf("GRAPH SIZE: %d\n", size);
+  printf("GRAPH SIZE: %d\n", SIZE);
   generateGraph();
   printf("Graph generated\n");
   //printGraph();
-  countDijkstra(0, size - 1);
+  countDijkstra(0, SIZE - 1);
 
   return 0;
 }
