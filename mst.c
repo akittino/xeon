@@ -62,7 +62,7 @@ unsigned gotAll()
 {
   unsigned total = 0;
   unsigned ii;
-  #pragma omp parallel for reduction(+:total) shared(got) private(ii)
+  #pragma omp parallel for reduction(+:total)
   for (ii = 0; ii < SIZE; ++ii)
   {
     if (got[ii] == TRUE)
@@ -78,52 +78,38 @@ int main()
   unsigned x = 0, y = 0;
   long long unsigned int mst = 0;
   unsigned ii, jj;
-  unsigned tnum = 0;
-  unsigned tid = 0;
-  unsigned* lmin = null;
-  unsigned* lx = null;
-  unsigned* ly = null;
   generateGraph();
   //printGraph();
-  tnum = omp_get_num_threads();
-  lmin = (unsigned*) malloc (tnum * sizeof(unsigned));
-  lx = (unsigned*) malloc (tnum * sizeof(unsigned));
-  ly = (unsigned*) malloc (tnum * sizeof(unsigned));
 
-
-  #pragma omp parallel shared(data, lx, ly, lmin) private(ii, jj, tid)
+  #pragma omp parallel
   {
-    lx = ly = 0;
-    tid = omp_get_thread_num();
-
-    for (ii = 0; ii < tnum; ++ii)
-      lmin[ii] = MAX;
+    unsigned lmin = MAX;
+    unsigned lx = 0, ly = 0;
 
     #pragma omp for nowait
     for (ii = 0; ii < SIZE; ++ii)
     {
       for (jj = 0; jj < SIZE; ++jj)
       {
-        if (data[ii][jj] < lmin[tid])
+        if (data[ii][jj] < lmin)
         {
-          lmin[tid] = data[ii][jj];
-          lx[tid] = ii;
-          ly[tid] = jj;
+          lmin = data[ii][jj];
+          lx = ii;
+          ly = jj;
         }
-      } // for
-    } // omp pragma for
-  } // omp pragma parallel
+      }
+    }
 
-  for(ii = 0; ii < tnum; ++ii)
-  {
-    if(lmin[ii] < minimum)
+    #pragma omp critical
     {
-      minimum = lmin[ii];
-      x = lx[ii];
-      y = ly[ii];
+      if(lmin < minimum)
+      {
+        minimum = lmin;
+        x = lx;
+        y = ly;
+      }
     }
   }
-
   mst += data[x][y];
   got[x] = TRUE;
   got[y] = TRUE;
@@ -132,39 +118,35 @@ int main()
 
   while (!gotAll())
   {
-    #pragma omp parallel shared(data, got, lx, ly, lmin) private(ii, jj)
+    #pragma omp parallel
     {
-      lx = 0, ly = 0;
-      tid = omp_get_thread_num();
-
-      for (ii = 0; ii < tnum; ++ii)
-        lmin[ii] = MAX;
+      unsigned lmin = MAX;
+      unsigned lx = 0, ly = 0;
 
       #pragma omp for nowait
       for (ii = 0; ii < SIZE; ++ii)
       {
         for (jj = 0; jj < SIZE; ++jj)
         {
-          if ((got[ii] ^ got[jj]) && (data[ii][jj] < lmin[tid]))
+          if ((got[ii] ^ got[jj]) && (data[ii][jj] < lmin))
           {
-            lmin[tid] = data[ii][jj];
-            lx[tid] = ii;
-            ly[tid] = jj;
+            lmin = data[ii][jj];
+            lx = ii;
+            ly = jj;
           }
-        } // for
-      } // pragma omp for
-    } // pragma omp parallel
+        }
+      }
 
-    for(ii = 0; ii < tnum; ++ii)
-    {
-      if(lmin[ii] < minimum)
+      #pragma omp critical
       {
-        minimum = lmin[ii];
-        x = lx[ii];
-        y = ly[ii];
+        if(lmin < minimum)
+        {
+          minimum = lmin;
+          x = lx;
+          y = ly;
+        }
       }
     }
-
     mst += data[x][y];
     got[x] = TRUE;
     got[y] = TRUE;
