@@ -97,7 +97,7 @@ int main()
 
   while (!gotAll())
   {
-    #pragma omp parallel shared(data, got, lx, ly, lmin) private(ii, jj, first)
+    #pragma omp parallel shared(data, got, lx, ly, lmin) private(ii, jj)
     {
 
       tid = omp_get_thread_num();
